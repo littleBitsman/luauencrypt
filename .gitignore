@@ -1,0 +1,8 @@
+/target
+.vscode
+Cargo.lock
+*.luauc
+*.luaucx
+luauencrypt.exe
+compile.exe
+example.*
