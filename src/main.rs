@@ -148,13 +148,11 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
-
     use super::*;
 
     macro_rules! bench {
         { $($tt:tt)* } => {{
-            let start = Instant::now();
+            let start = ::std::time::Instant::now();
             let result = { $($tt)* };
             let duration = start.elapsed();
             (duration, result)
