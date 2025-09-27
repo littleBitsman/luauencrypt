@@ -151,7 +151,13 @@ fn main() {
         Subcommands::GenerateKey => {
             let mut key = [0; 32];
             rand::fill(&mut key);
-            let out_path = args.key;
+            let mut out_path = args.key;
+            out_path.file_name().unwrap_or_else(|| {
+                err("key path must include a file name", ClapErrorKind::InvalidValue)
+            });
+            if out_path.extension().is_none() {
+                out_path.set_extension("lbxk");
+            }
             fs::write(&out_path, key).unwrap_or_else(|e| {
                 err(
                     format!("failed to write {}: {}", out_path.display(), e),
