@@ -16,15 +16,6 @@ pub enum Target {
     X64MS
 }
 
-#[derive(Clone, Copy, ValueEnum, Debug)]
-pub enum Mode {
-    #[value(name = "encrypt")]
-    Encrypt,
-
-    #[value(name = "decrypt")]
-    Decrypt
-}
-
 #[derive(Subcommand, Debug)]
 pub enum Subcommands {
     /// compiles & encrypts Luau source files
@@ -78,7 +69,12 @@ pub enum Subcommands {
         #[arg(num_args(1..))]
         /// Input Luau encrypted bytecode file(s) to decrypt
         input: Vec<PathBuf>,
-    }
+    },
+
+    #[command(name = "genkey")]
+    /// generates a random encryption key and writes it to
+    /// the key file specified by --key
+    GenerateKey
 }
 
 #[derive(Parser, Debug)]

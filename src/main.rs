@@ -63,12 +63,17 @@ fn err(msg: impl fmt::Display, kind: ClapErrorKind) -> ! {
 fn main() {
     let args = Args::parse();
 
-    let key = fs::read(&args.key).expect("failed to read key file");
-    if key.len() != 32 {
-        err(
-            "key file must be exactly 32 bytes",
-            ClapErrorKind::InvalidValue,
-        );
+    let key: Vec<u8>;
+    if matches!(args.command, Subcommands::GenerateKey) {
+        key = Vec::new();
+    } else {
+        key = fs::read(&args.key).expect("failed to read key file");
+        if key.len() != 32 {
+            err(
+                "key file must be exactly 32 bytes",
+                ClapErrorKind::InvalidValue,
+            );
+        }
     }
     let out_dir = args.out_dir.unwrap_or_else(|| current_dir().unwrap());
     fs::create_dir_all(&out_dir).unwrap_or_else(|e| {
@@ -142,6 +147,21 @@ fn main() {
                     out_path.display()
                 );
             }
+        }
+        Subcommands::GenerateKey => {
+            let mut key = [0; 32];
+            rand::fill(&mut key);
+            let out_path = args.key;
+            fs::write(&out_path, key).unwrap_or_else(|e| {
+                err(
+                    format!("failed to write {}: {}", out_path.display(), e),
+                    ClapErrorKind::Io,
+                )
+            });
+            println!(
+                "Successfully generated key and wrote to {}",
+                out_path.display()
+            );
         }
     }
 }

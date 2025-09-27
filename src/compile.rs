@@ -63,7 +63,7 @@ impl Display for lua_CompileOptions {
 
 unsafe extern "C-unwind" {
     #[link_name = "luau_compile"]
-    pub unsafe fn luau_compile_internal(
+    pub unsafe fn _luau_compile_internal(
         source: *const c_char,
         size: usize,
         options: *mut lua_CompileOptions,
@@ -74,7 +74,7 @@ unsafe extern "C-unwind" {
 #[expect(clippy::missing_safety_doc)]
 pub unsafe fn luau_compile(source: &[u8], mut options: lua_CompileOptions) -> Vec<u8> {
     let mut outsize = 0;
-    let data_ptr = unsafe { luau_compile_internal(
+    let data_ptr = unsafe { _luau_compile_internal(
         source.as_ptr() as *const c_char,
         source.len(),
         &mut options,
