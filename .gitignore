@@ -1,3 +1,5 @@
+# wow this is a mess isnt it!!
+
 /target
 .vscode
 Cargo.lock
@@ -6,3 +8,4 @@ Cargo.lock
 luauencrypt.exe
 compile.exe
 example.*
+*.pem
