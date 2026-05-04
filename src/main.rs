@@ -106,7 +106,7 @@ fn main() {
                         ClapErrorKind::Io,
                     )
                 });
-                let bytecode = unsafe { luau_compile(&source, opts) };
+                let bytecode = luau_compile(&source, opts, None).unwrap();
                 compiled.push((path.clone(), bytecode));
                 println!("Successfully compiled {}", path.display());
             }
@@ -155,7 +155,10 @@ fn main() {
             rand::fill(&mut key);
             let mut out_path = args.key;
             out_path.file_name().unwrap_or_else(|| {
-                err("key path must include a file name", ClapErrorKind::InvalidValue)
+                err(
+                    "key path must include a file name",
+                    ClapErrorKind::InvalidValue,
+                )
             });
             if out_path.extension().is_none() {
                 out_path.set_extension("lbxk");
@@ -228,11 +231,20 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn compile_fail() {
+        let source = b"this is not valid luau code";
+        let opts = lua_CompileOptions::default();
+        let bytecode = luau_compile(source, opts, None).unwrap();
+        println!("{}", String::from_utf8_lossy(&bytecode))
+    }
+
+    #[test]
     fn compile() -> anyhow::Result<()> {
         let source = fs::read("example.luau")?;
         let opts = DisplayOnDrop(lua_CompileOptions::default());
         let (comp_dur, bytecode) = bench! {
-            unsafe { luau_compile(&source, *opts) }
+            luau_compile(&source, *opts, None).unwrap()
         };
         println!("compilation took {comp_dur:?}");
 

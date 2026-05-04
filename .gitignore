@@ -9,3 +9,4 @@ luauencrypt.exe
 compile.exe
 example.*
 *.pem
+.luaurc

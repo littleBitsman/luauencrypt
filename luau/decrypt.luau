@@ -61,7 +61,6 @@ local function decrypt_luaucxv1(buf: buffer, key: buffer): { additional_data: bu
 end
 
 --[[ -- was testing with this
-
 local fs = require("@lune/fs")
 
 local key = buffer.fromstring(fs.readFile("example_key"))
@@ -94,4 +93,4 @@ local result = assert(decrypt_luaucxv1(buf, key), "failed to decrypt")
 fs.writeFile("decrypted_from_rustenc.luauc", buffer.tostring(result.data))
 local other = fs.readFile("example.luauc")
 print(other == buffer.tostring(result.data))
-]]
+--]]

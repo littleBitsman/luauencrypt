@@ -43,10 +43,10 @@ fn read_u32(input: &[u8], off: &mut usize) -> u32 {
     u32::from_le_bytes(input[start..*off].try_into().unwrap())
 }
 
-fn random_nonce() -> [u8; NONCE_LEN] {
-    let mut nonce = [0; NONCE_LEN];
-    rand::fill(&mut nonce);
-    nonce
+fn rand_bytes<const N: usize>() -> [u8; N] {
+    let mut b = [0; N];
+    rand::fill(&mut b);
+    b
 }
 
 pub fn encrypt_bytecode_into(
@@ -59,7 +59,7 @@ pub fn encrypt_bytecode_into(
 ) -> Result<usize> {
     ensure!(key.len() == 32, "key must be 32 bytes");
 
-    let nonce = &nonce.unwrap_or_else(random_nonce);
+    let nonce = &nonce.unwrap_or_else(rand_bytes);
 
     let cipher = Cipher::new(key.into());
     let ciphertext = cipher
@@ -167,12 +167,6 @@ pub fn decrypt_bytecode_into(
 mod tests {
     use super::*;
 
-    fn rand_bytes<const N: usize>() -> [u8; N] {
-        let mut b = [0; N];
-        rand::fill(&mut b);
-        b
-    }
-
     fn test_key() -> [u8; 32] {
         rand_bytes()
     }
@@ -257,14 +251,7 @@ mod tests {
         let key = [0u8; 16]; // wrong length
         let mut out = Vec::new();
 
-        let result = encrypt_bytecode_into(
-            bytecode,
-            Some(test_nonce()),
-            &key,
-            0,
-            b"",
-            &mut out,
-        );
+        let result = encrypt_bytecode_into(bytecode, Some(test_nonce()), &key, 0, b"", &mut out);
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("32 bytes"));
@@ -329,10 +316,12 @@ mod tests {
 
         let result = decrypt_bytecode_into(&blob, &key, None, &mut out, None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("unsupported version"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("unsupported version")
+        );
     }
 
     #[test]
@@ -347,10 +336,12 @@ mod tests {
 
         let result = decrypt_bytecode_into(&blob, &key, None, &mut out, None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("unsupported aead id"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("unsupported aead id")
+        );
     }
 
     #[test]
@@ -374,23 +365,29 @@ mod tests {
         let mut decrypted_wrong = Vec::new();
         let result = decrypt_bytecode_into(&encrypted, &key, Some(99), &mut decrypted_wrong, None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("key ID mismatch"));
+        assert!(result.unwrap_err().to_string().contains("key ID mismatch"));
     }
 
     #[test]
     fn test_round_trip_encryption_decryption() {
-        let original_bytecode = b"print('Hello, world!')";
+        let original_code = b"print('Hello, world!')";
         let key = test_key();
         let nonce = test_nonce();
         let aad = b"metadata";
 
+        let original_bytecode = crate::luau_compile(original_code, Default::default(), None).unwrap();
+
         // Encrypt
         let mut encrypted = Vec::new();
-        encrypt_bytecode_into(original_bytecode, Some(nonce), &key, 1, aad, &mut encrypted)
-            .expect("encryption failed");
+        encrypt_bytecode_into(
+            &original_bytecode,
+            Some(nonce),
+            &key,
+            1,
+            aad,
+            &mut encrypted,
+        )
+        .expect("encryption failed");
 
         // Decrypt
         let mut decrypted_bytecode = Vec::new();
@@ -412,18 +409,19 @@ mod tests {
 
     #[test]
     fn test_round_trip_no_aad() {
-        let original_bytecode = b"local x = 42";
+        let original_code = b"local x = 42";
         let key = test_key();
         let nonce = test_nonce();
 
+        let original_bytecode = crate::luau_compile(original_code, Default::default(), None).unwrap();
+
         let mut encrypted = Vec::new();
-        encrypt_bytecode_into(original_bytecode, Some(nonce), &key, 0, b"", &mut encrypted)
+        encrypt_bytecode_into(&original_bytecode, Some(nonce), &key, 0, b"", &mut encrypted)
             .expect("encryption failed");
 
         let mut decrypted = Vec::new();
-        let (len, aad_len) =
-            decrypt_bytecode_into(&encrypted, &key, None, &mut decrypted, None)
-                .expect("decryption failed");
+        let (len, aad_len) = decrypt_bytecode_into(&encrypted, &key, None, &mut decrypted, None)
+            .expect("decryption failed");
 
         assert_eq!(decrypted, original_bytecode);
         assert_eq!(len, original_bytecode.len());
@@ -438,8 +436,15 @@ mod tests {
         let aad = b"large file";
 
         let mut encrypted = Vec::new();
-        encrypt_bytecode_into(&original_bytecode, Some(nonce), &key, 255, aad, &mut encrypted)
-            .expect("encryption failed");
+        encrypt_bytecode_into(
+            &original_bytecode,
+            Some(nonce),
+            &key,
+            255,
+            aad,
+            &mut encrypted,
+        )
+        .expect("encryption failed");
 
         let mut decrypted = Vec::new();
         let mut decrypted_aad = Vec::new();
@@ -470,10 +475,12 @@ mod tests {
         let mut decrypted = Vec::new();
         let result = decrypt_bytecode_into(&encrypted, &wrong_key, None, &mut decrypted, None);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("decryption failed"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("decryption failed")
+        );
     }
 
     #[test]
@@ -492,10 +499,12 @@ mod tests {
             let mut decrypted = Vec::new();
             let result = decrypt_bytecode_into(&encrypted, &key, None, &mut decrypted, None);
             assert!(result.is_err());
-            assert!(result
-                .unwrap_err()
-                .to_string()
-                .contains("decryption failed"));
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("decryption failed")
+            );
         }
     }
 
@@ -569,6 +578,9 @@ mod tests {
 
         // Nonce should be in the output at a known position
         let nonce_position = MAGIC.len() + 2 + 2 + 4 + 4;
-        assert_eq!(&encrypted[nonce_position..nonce_position + NONCE_LEN], &nonce[..]);
+        assert_eq!(
+            &encrypted[nonce_position..nonce_position + NONCE_LEN],
+            &nonce[..]
+        );
     }
 }

@@ -77,9 +77,13 @@ unsafe extern "C-unwind" {
     ) -> *mut c_char;
 }
 
-#[expect(clippy::missing_safety_doc, clippy::missing_panics_doc)]
+#[expect(clippy::missing_panics_doc)]
 #[must_use = "compiled bytecode outputs should be used or never compiled"]
-pub unsafe fn luau_compile(source: &[u8], mut options: lua_CompileOptions) -> Vec<u8> {
+pub fn luau_compile(
+    source: &[u8],
+    mut options: lua_CompileOptions,
+    chunk_name: Option<&str>
+) -> Result<Vec<u8>, anyhow::Error> {
     let mut outsize = 0;
     let data_ptr = unsafe {
         luau_compile_internal(
@@ -89,8 +93,19 @@ pub unsafe fn luau_compile(source: &[u8], mut options: lua_CompileOptions) -> Ve
             &raw mut outsize,
         )
     };
-    assert!(!data_ptr.is_null(), "luau_compile failed");
+    assert!(
+        !data_ptr.is_null(),
+        "Luau compile error: out of memory"
+    );
     let data = unsafe { slice::from_raw_parts(data_ptr as *const u8, outsize).to_vec() };
     unsafe { libc::free(data_ptr.cast::<c_void>()) };
-    data
+    if data[0] != 0 {
+        Ok(data)
+    } else {
+        anyhow::bail!(
+            "Luau compile error: {}{}",
+            chunk_name.unwrap_or("(Luau source)"),
+            String::from_utf8_lossy(&data[1..])
+        )
+    }
 }

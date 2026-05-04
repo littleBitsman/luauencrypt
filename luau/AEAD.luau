@@ -24,8 +24,8 @@
 --!optimize 2
 --!native
 
-local ChaCha = require("@self/ChaCha20")
-local Poly1305 = require("@self/Poly1305")
+local ChaCha = require("./ChaCha20")
+local Poly1305 = require("./Poly1305")
 
 local QWORD = 8
 
