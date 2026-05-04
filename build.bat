@@ -1,0 +1,3 @@
+cargo build --release
+copy /Y .\target\release\luauencrypt.exe .\
+"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /v /debug /fd SHA256 /tr "http://timestamp.acs.microsoft.com" /td SHA256 /dlib "C:\Users\aditt\AppData\Local\Microsoft\MicrosoftTrustedSigningClientTools\Azure.CodeSigning.Dlib.dll" /dmdf ".\metadata.json" C:\Users\aditt\Documents\coding\luauencrypt\luauencrypt.exe

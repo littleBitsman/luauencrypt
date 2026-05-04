@@ -1,6 +1,9 @@
-#![expect(non_camel_case_types)]
-
-use std::{fmt::{Debug, Display, Formatter, Result as FmtResult}, marker::{PhantomData, PhantomPinned}, os::raw::{c_char, c_int, c_void}, ptr, slice};
+use std::{
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    marker::{PhantomData, PhantomPinned},
+    os::raw::{c_char, c_int, c_void},
+    ptr, slice,
+};
 
 #[repr(C)]
 pub struct lua_CompileConstant {
@@ -8,8 +11,11 @@ pub struct lua_CompileConstant {
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
 
+#[expect(non_camel_case_types)]
 pub type lua_LibraryMemberTypeCallback =
     unsafe extern "C-unwind" fn(library: *const c_char, member: *const c_char) -> c_int;
+
+#[expect(non_camel_case_types)]
 pub type lua_LibraryMemberConstantCallback = unsafe extern "C-unwind" fn(
     library: *const c_char,
     member: *const c_char,
@@ -63,7 +69,7 @@ impl Display for lua_CompileOptions {
 
 unsafe extern "C-unwind" {
     #[link_name = "luau_compile"]
-    pub unsafe fn _luau_compile_internal(
+    pub unsafe fn luau_compile_internal(
         source: *const c_char,
         size: usize,
         options: *mut lua_CompileOptions,
@@ -71,17 +77,20 @@ unsafe extern "C-unwind" {
     ) -> *mut c_char;
 }
 
-#[expect(clippy::missing_safety_doc)]
+#[expect(clippy::missing_safety_doc, clippy::missing_panics_doc)]
+#[must_use = "compiled bytecode outputs should be used or never compiled"]
 pub unsafe fn luau_compile(source: &[u8], mut options: lua_CompileOptions) -> Vec<u8> {
     let mut outsize = 0;
-    let data_ptr = unsafe { _luau_compile_internal(
-        source.as_ptr() as *const c_char,
-        source.len(),
-        &mut options,
-        &mut outsize,
-    ) };
+    let data_ptr = unsafe {
+        luau_compile_internal(
+            source.as_ptr().cast::<c_char>(),
+            source.len(),
+            &raw mut options,
+            &raw mut outsize,
+        )
+    };
     assert!(!data_ptr.is_null(), "luau_compile failed");
     let data = unsafe { slice::from_raw_parts(data_ptr as *const u8, outsize).to_vec() };
-    unsafe { libc::free(data_ptr as *mut c_void) };
+    unsafe { libc::free(data_ptr.cast::<c_void>()) };
     data
 }

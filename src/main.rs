@@ -1,10 +1,12 @@
+#![deny(clippy::missing_safety_doc, clippy::missing_panics_doc)]
+
 use clap::{CommandFactory, Parser, error::ErrorKind as ClapErrorKind};
 use std::{
     env::current_dir,
     ffi::OsString,
     fmt,
     fs::{self, File},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 mod compile;
@@ -14,11 +16,11 @@ mod luaucx;
 pub use luaucx::*;
 
 mod cli;
-use cli::*;
+use cli::{Args, Subcommands};
 
 fn encrypt(
     data: Vec<(PathBuf, Vec<u8>)>,
-    out_dir: PathBuf,
+    out_dir: &Path,
     key: &[u8],
     key_id: Option<u16>,
     aad: &[u8],
@@ -78,7 +80,7 @@ fn main() {
     let out_dir = args.out_dir.unwrap_or_else(|| current_dir().unwrap());
     fs::create_dir_all(&out_dir).unwrap_or_else(|e| {
         err(
-            format!("failed to create output directory: {}", e),
+            format!("failed to create output directory: {e}"),
             ClapErrorKind::Io,
         )
     });
@@ -91,8 +93,8 @@ fn main() {
             input,
         } => {
             let opts = lua_CompileOptions {
-                debugLevel: debug_lvl as i32,
-                optimizationLevel: opt_lvl as i32,
+                debugLevel: i32::from(debug_lvl),
+                optimizationLevel: i32::from(opt_lvl),
                 ..Default::default()
             };
 
@@ -110,7 +112,7 @@ fn main() {
             }
             let aad = aad.unwrap_or_else(OsString::new);
             let aad = aad.as_encoded_bytes();
-            encrypt(compiled, out_dir, &key, args.key_id, aad);
+            encrypt(compiled, &out_dir, &key, args.key_id, aad);
         }
         Subcommands::Encrypt { aad, input } => {
             let aad = aad.unwrap_or_else(OsString::new);
@@ -122,7 +124,7 @@ fn main() {
                     (path, bytecode)
                 })
                 .collect();
-            encrypt(compiled, out_dir, &key, args.key_id, aad);
+            encrypt(compiled, &out_dir, &key, args.key_id, aad);
         }
         Subcommands::Decrypt { input } => {
             for path in input {
@@ -232,7 +234,7 @@ mod tests {
         let (comp_dur, bytecode) = bench! {
             unsafe { luau_compile(&source, *opts) }
         };
-        println!("compilation took {:?}", comp_dur);
+        println!("compilation took {comp_dur:?}");
 
         let mut key = DebugOnDrop([0; 32]);
         rand::fill(&mut *key);
@@ -241,14 +243,14 @@ mod tests {
         let (enc_dur, _written_bytes) = bench! {
             encrypt_bytecode_into(&bytecode, None, &*key, 0, &[], &mut encrypted)?
         };
-        println!("encryption took {:?}", enc_dur);
+        println!("encryption took {enc_dur:?}");
 
         let mut decrypted = Vec::with_capacity(bytecode.len());
         let (dec_dur, (_read_bytes, _ad_size)) = bench! {
             decrypt_bytecode_into(&encrypted, &*key, Some(0), &mut decrypted, None)?
         };
         assert_eq!(bytecode, decrypted);
-        println!("decryption took {:?}", dec_dur);
+        println!("decryption took {dec_dur:?}");
 
         Ok(())
     }
